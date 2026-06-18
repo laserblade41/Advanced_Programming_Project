@@ -1,3 +1,5 @@
+package graph;
+
 import java.util.Date;
 
 public class Message {

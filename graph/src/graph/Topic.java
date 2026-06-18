@@ -1,3 +1,5 @@
+package graph;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,5 +29,13 @@ public class Topic {
 
     public void removePublisher(Agent a){
         pubs.remove(a);
+    }
+
+    public List<Agent> getPubs() {
+        return new ArrayList<>(pubs);
+    }
+
+    public List<Agent> getSubs() {
+        return new ArrayList<>(subs);
     }
 }

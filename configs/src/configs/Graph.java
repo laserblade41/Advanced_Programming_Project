@@ -1,9 +1,12 @@
+package configs;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Collection;
 
-import test.TopicManagerSingleton.TopicManager;
+import graph.*;
+import graph.TopicManagerSingleton.TopicManager;
 
 public class Graph extends ArrayList<Node> {
 
@@ -31,7 +34,7 @@ public class Graph extends ArrayList<Node> {
 
         // create nodes for agents (found in subs and pubs)
         for (Topic t : topics) {
-            for (Agent a : t.subs) {
+            for (Agent a : t.getSubs()) {
                 String an = a.getName();
                 if (!nodesByName.containsKey(an)) {
                     Node anode = new Node(an);
@@ -39,7 +42,7 @@ public class Graph extends ArrayList<Node> {
                     this.add(anode);
                 }
             }
-            for (Agent a : t.pubs) {
+            for (Agent a : t.getPubs()) {
                 String an = a.getName();
                 if (!nodesByName.containsKey(an)) {
                     Node anode = new Node(an);
@@ -49,18 +52,18 @@ public class Graph extends ArrayList<Node> {
             }
         }
 
-        // add edges: Ttopic -> Aagent for subs, Aagent -> Ttopic for pubs
+        // add edges: Topic -> Agent for subs, Agent -> Topic for pubs
         for (Topic t : topics) {
             Node tnode = nodesByName.get("T" + t.name);
             if (tnode == null) continue;
 
-            for (Agent a : t.subs) {
+            for (Agent a : t.getSubs()) {
                 Node anode = nodesByName.get(a.getName());
                 if (anode != null) {
                     tnode.addEdge(anode);
                 }
             }
-            for (Agent a : t.pubs) {
+            for (Agent a : t.getPubs()) {
                 Node anode = nodesByName.get(a.getName());
                 if (anode != null) {
                     anode.addEdge(tnode);

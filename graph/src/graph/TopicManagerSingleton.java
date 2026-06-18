@@ -1,3 +1,5 @@
+package graph;
+
 import java.util.concurrent.ConcurrentHashMap;
 
 public class TopicManagerSingleton {
@@ -11,11 +13,11 @@ public class TopicManagerSingleton {
         private TopicManager() {
 
         }
-        Topic getTopic(String name) {
+        public Topic getTopic(String name) {
             // if topic exists return it, otherwise create a new one and return it
             return topics.computeIfAbsent(name, Topic::new);
         }
-        ConcurrentHashMap<String, Topic> getAllTopics() {
+        public ConcurrentHashMap<String, Topic> getAllTopics() {
             return topics;
         }
         void clear() {

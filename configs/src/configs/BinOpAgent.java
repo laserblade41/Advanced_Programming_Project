@@ -1,4 +1,7 @@
+package configs;
+
 import java.util.function.BinaryOperator;
+import graph.*;
 
 public class BinOpAgent implements Agent {
 

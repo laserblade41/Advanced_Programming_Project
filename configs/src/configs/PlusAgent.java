@@ -1,4 +1,7 @@
-import test.TopicManagerSingleton.TopicManager;
+package configs;
+
+import graph.*;
+import graph.TopicManagerSingleton.TopicManager;
 
 public class PlusAgent implements Agent {
 
