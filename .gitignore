@@ -13,6 +13,8 @@ out/
 .sts4-cache
 *.class
 *.pdf
+*.xml
+*.iml
 bin/
 !**/src/main/**/bin/
 !**/src/test/**/bin/

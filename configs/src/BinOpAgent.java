@@ -1,5 +1,3 @@
-package test;
-
 import java.util.function.BinaryOperator;
 
 public class BinOpAgent implements Agent {

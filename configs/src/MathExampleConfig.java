@@ -1,6 +1,3 @@
-package test;
-
-
 public class MathExampleConfig implements Config {
 
     @Override
