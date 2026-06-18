@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Awaiting Action</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --text-color: #94a3b8;
+            --accent-color: #3b82f6;
+            --border-color: #1e293b;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 400px;
+            padding: 2rem;
+            border: 1px dashed var(--border-color);
+            border-radius: 12px;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(8px);
+            animation: pulse 3s infinite ease-in-out;
+        }
+
+        .icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--accent-color);
+            opacity: 0.8;
+        }
+
+        h3 {
+            margin: 0 0 0.5rem 0;
+            font-weight: 500;
+            color: #f1f5f9;
+            font-size: 1.1rem;
+            letter-spacing: -0.01em;
+        }
+
+        p {
+            margin: 0;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            font-weight: 300;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                border-color: #1e293b;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            }
+            50% {
+                border-color: rgba(59, 130, 246, 0.3);
+                box-shadow: 0 4px 20px -2px rgba(59, 130, 246, 0.1);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">⚡</div>
+        <h3>No Data Loaded</h3>
+        <p>Awaiting system command or configuration upload to initialize view.</p>
+    </div>
+</body>
+</html>
