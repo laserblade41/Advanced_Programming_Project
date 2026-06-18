@@ -2,10 +2,10 @@ Project_Root/
 ├── config_files/
 │   └── simple.conf
 ├── html_files/
-│   ├── form.html // todo
-│   ├── graph.html // todo
-│   ├── index.html // todo
-│   └── temp.html // todo
+│   ├── form.html                        todo
+│   ├── graph.html                       todo
+│   ├── index.html                       todo
+│   └── temp.html                        todo
 ├── project_biu/
 │   ├── configs/
 │   │   ├── BinOpAgent.java
@@ -27,13 +27,13 @@ Project_Root/
 │   │   ├── MyHTTPServer.java
 │   │   └── RequestParser.java
 │   ├── servlets/
-│   │   ├── ConfLoader.java // todo
-│   │   ├── HtmlLoader.java // todo
+│   │   ├── ConfLoader.java               todo
+│   │   ├── HtmlLoader.java               todo
 │   │   ├── Servlet.java
-│   │   └── TopicDisplayer.java // todo
+│   │   └── TopicDisplayer.java           todo
 │   ├── views/
-│   │   └── HtmlGraphWriter.java // todo
-│   └── Main.java // todo
-├── link.txt // todo
+│   │   └── HtmlGraphWriter.java          todo
+│   └── Main.java                         todo
+├── link.txt                              todo
 ├── README.md
-└── demo_video.mp4 // todo
+└── demo_video.mp4                        todo
