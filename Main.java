@@ -9,7 +9,9 @@ public class Main {
         HTTPServer server = new MyHTTPServer(8080, 5);
 
         server.addServlet("GET", "/publish", new TopicDisplayer());
-        server.addServlet("POST", "/upload", new ConfLoader());
+        ConfLoader confLoader = new ConfLoader();
+        server.addServlet("POST", "/upload", confLoader);
+        server.addServlet("GET", "/upload", confLoader);
         server.addServlet("GET", "/app/", new HtmlLoader("html_files"));
 
         server.start();

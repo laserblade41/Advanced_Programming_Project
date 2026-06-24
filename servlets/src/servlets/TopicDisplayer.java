@@ -48,8 +48,10 @@ public class TopicDisplayer implements Servlet {
         }
 
         // Publish the message to the appropriate topic using the TopicManagerSingleton
+        boolean published = false;
         if (topic != null && message != null && !topic.trim().isEmpty() && !message.trim().isEmpty()) {
             TopicManagerSingleton.get().getTopic(topic.trim()).publish(new Message(message.trim()));
+            published = true;
         }
 
         // Build the HTML response containing the table of all topics and their last values
@@ -182,6 +184,12 @@ public class TopicDisplayer implements Servlet {
                 "            </tbody>\n" +
                 "        </table>\n" +
                 "    </div>\n" +
+                "    <script>\n" +
+                "        const isPublishAction = " + published + ";\n" +
+                "        if (isPublishAction && window.parent && window.parent.frames['graph-center']) {\n" +
+                "            window.parent.frames['graph-center'].location.href = 'http://localhost:8080/upload';\n" +
+                "        }\n" +
+                "    </script>\n" +
                 "</body>\n" +
                 "</html>";
 

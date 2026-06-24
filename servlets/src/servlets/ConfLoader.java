@@ -19,70 +19,74 @@ public class ConfLoader implements Servlet {
 
     @Override
     public void handle(RequestParser.RequestInfo ri, OutputStream toClient) throws IOException {
-        String filename = null;
-        String fileContent = null;
-
         try {
-            byte[] body = ri.getContent();
-            boolean isMultipart = false;
+            boolean isGet = "GET".equalsIgnoreCase(ri.getHttpCommand());
+            String filename = null;
+            String fileContent = null;
 
-            if (body != null && body.length > 0) {
-                // Check if it's a multipart form upload by reading the first characters
-                String bodyPrefix = new String(body, 0, Math.min(body.length, 10), StandardCharsets.UTF_8);
-                if (bodyPrefix.startsWith("--")) {
-                    isMultipart = true;
-                    MultipartData md = parseMultipart(body);
-                    if (md != null) {
-                        filename = md.filename;
-                        fileContent = md.fileContent;
+            if (!isGet) {
+                byte[] body = ri.getContent();
+                boolean isMultipart = false;
+
+                if (body != null && body.length > 0) {
+                    // Check if it's a multipart form upload by reading the first characters
+                    String bodyPrefix = new String(body, 0, Math.min(body.length, 10), StandardCharsets.UTF_8);
+                    if (bodyPrefix.startsWith("--")) {
+                        isMultipart = true;
+                        MultipartData md = parseMultipart(body);
+                        if (md != null) {
+                            filename = md.filename;
+                            fileContent = md.fileContent;
+                        }
                     }
                 }
-            }
 
-            // Fallback for non-multipart requests (such as automatic testing tools/dummy tests)
-            if (!isMultipart) {
-                Map<String, String> params = ri.getParameters();
-                if (params != null) {
-                    filename = params.get("filename");
-                    if (filename == null) {
-                        filename = params.get("Filename");
+                // Fallback for non-multipart requests (such as automatic testing tools/dummy tests)
+                if (!isMultipart) {
+                    Map<String, String> params = ri.getParameters();
+                    if (params != null) {
+                        filename = params.get("filename");
+                        if (filename == null) {
+                            filename = params.get("Filename");
+                        }
+                    }
+                    if (body != null) {
+                        fileContent = new String(body, StandardCharsets.UTF_8).trim();
                     }
                 }
-                if (body != null) {
-                    fileContent = new String(body, StandardCharsets.UTF_8).trim();
+
+                // Default filename if not extracted
+                if (filename == null || filename.trim().isEmpty()) {
+                    filename = "uploaded_config.conf";
+                } else {
+                    filename = filename.trim();
                 }
-            }
 
-            // Default filename if not extracted
-            if (filename == null || filename.trim().isEmpty()) {
-                filename = "uploaded_config.conf";
-            } else {
-                filename = filename.trim();
-            }
+                if (fileContent == null || fileContent.trim().isEmpty()) {
+                    throw new IllegalArgumentException("Configuration file content is empty.");
+                }
 
-            if (fileContent == null || fileContent.trim().isEmpty()) {
-                throw new IllegalArgumentException("Configuration file content is empty.");
-            }
+                // Save the uploaded file on the server side in the config_files/ directory
+                File dir = new File("config_files");
+                if (!dir.exists()) {
+                    dir.mkdirs();
+                }
+                File file = new File(dir, filename);
+                try (FileWriter writer = new FileWriter(file)) {
+                    writer.write(fileContent);
+                }
 
-            // Save the uploaded file on the server side in the config_files/ directory
-            File dir = new File("config_files");
-            if (!dir.exists()) {
-                dir.mkdirs();
-            }
-            File file = new File(dir, filename);
-            try (FileWriter writer = new FileWriter(file)) {
-                writer.write(fileContent);
-            }
+                // Load the GenericConfig
+                System.out.println("[ConfLoader] Saved config file to: " + file.getAbsolutePath());
+                GenericConfig config = new GenericConfig();
+                config.setConfFile(file.getPath());
+                config.create();
 
-            // Load the GenericConfig
-            System.out.println("[ConfLoader] Saved config file to: " + file.getAbsolutePath());
-            GenericConfig config = new GenericConfig();
-            config.setConfFile(file.getPath());
-            config.create();
-
-            System.out.println("[ConfLoader] Topics in TopicManager after config.create(): " + graph.TopicManagerSingleton.get().getAllTopics().keySet());
+                System.out.println("[ConfLoader] Topics in TopicManager after config.create(): " + graph.TopicManagerSingleton.get().getAllTopics().keySet());
+            }
 
             // Create a Graph from the active topics
+            System.out.println("[ConfLoader] TopicManager instance hash: " + System.identityHashCode(graph.TopicManagerSingleton.get()));
             Graph g = new Graph();
             g.createFromTopics();
             System.out.println("[ConfLoader] Graph nodes created: " + g.size());
@@ -91,7 +95,7 @@ public class ConfLoader implements Servlet {
             }
 
             // Obtain the HTML representation by delegating to views.HtmlGraphWriter
-            List<String> htmlLines = HtmlGraphWriter.getGraphHTML(g);
+            List<String> htmlLines = HtmlGraphWriter.getGraphHTML(g, !isGet);
             StringBuilder htmlContent = new StringBuilder();
             for (String line : htmlLines) {
                 htmlContent.append(line).append("\n");

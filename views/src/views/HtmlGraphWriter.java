@@ -16,7 +16,7 @@ import java.util.List;
 
 public class HtmlGraphWriter {
 
-    public static List<String> getGraphHTML(Graph g) {
+    public static List<String> getGraphHTML(Graph g, boolean isConfigUpload) {
         // Find and read html_files/graph.html template
         Path path = Paths.get("html_files", "graph.html");
         if (!Files.exists(path)) {
@@ -51,7 +51,7 @@ public class HtmlGraphWriter {
                 Topic t = TopicManagerSingleton.get().getTopic(topicName);
                 Message lastMsg = (t != null) ? t.getLastMessage() : null;
                 if (lastMsg != null) {
-                    label = topicName + "\\n[ " + lastMsg.asText + " ]";
+                    label = topicName + "\n[ " + lastMsg.asText + " ]";
                 } else {
                     label = topicName;
                 }
@@ -82,11 +82,22 @@ public class HtmlGraphWriter {
         }
         edgesJs.append("\n        ]");
 
-        // Regex replace dummy data arrays with the dynamic ones
-        // In graph.html, we have nodesData and edgesData arrays
+        // Replace the placeholder with dynamic nodes and edges data
         String result = template;
-        result = result.replaceAll("const nodesData\\s*=\\s*\\[[\\s\\S]*?\\]\\s*;", java.util.regex.Matcher.quoteReplacement("const nodesData = " + nodesJs.toString() + ";"));
-        result = result.replaceAll("const edgesData\\s*=\\s*\\[[\\s\\S]*?\\]\\s*;", java.util.regex.Matcher.quoteReplacement("const edgesData = " + edgesJs.toString() + ";"));
+        String graphDataJs = "const nodesData = " + nodesJs.toString() + ";\n" +
+                             "const edgesData = " + edgesJs.toString() + ";";
+        result = result.replace("/* INJECT_GRAPH_DATA_HERE */", graphDataJs);
+
+        // Append parent's right-frame reload script if a new configuration is uploaded
+        if (isConfigUpload) {
+            int lastIndex = result.lastIndexOf("</script>");
+            if (lastIndex >= 0) {
+                String reloadScript = "\n        if (window.parent && window.parent.frames['values-right']) {\n" +
+                               "            window.parent.frames['values-right'].location.href = 'http://localhost:8080/publish';\n" +
+                               "        }\n";
+                result = result.substring(0, lastIndex) + reloadScript + result.substring(lastIndex);
+            }
+        }
 
         // Split by lines and return
         String[] lines = result.split("\\r?\\n");
