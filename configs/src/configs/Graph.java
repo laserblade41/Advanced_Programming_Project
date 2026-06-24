@@ -8,14 +8,28 @@ import java.util.Collection;
 import graph.*;
 import graph.TopicManagerSingleton.TopicManager;
 
+/**
+ * Directed graph model representing the wiring between topics and agents.
+ *
+ * <p>Extends {@link java.util.ArrayList} of {@link Node} objects. Populated by
+ * {@link #createFromTopics()}, which reads the live topic registry from
+ * {@link graph.TopicManagerSingleton} and builds a bipartite structure:</p>
+ * <ul>
+ *   <li>Topic nodes are named {@code "T"} + topic name (e.g. {@code "TA"})</li>
+ *   <li>Agent nodes use {@link graph.Agent#getName()}</li>
+ *   <li>Subscription edges run Topic → Agent; publish edges run Agent → Topic</li>
+ * </ul>
+ *
+ * @see Node
+ * @see views.HtmlGraphWriter
+ */
 public class Graph extends ArrayList<Node> {
 
     /**
-     * Build a bipartite-like directed graph from topics and agents:
-     * - For every Topic t, create a topic-node named "T" + t.name
-     * - For every Agent that appears in subs or pubs, create an agent-node using agent.getName()
-     * - For every subscription (topic.subs contains agent): add edge Ttopic -> Aagent
-     * - For every publish registration (topic.pubs contains agent): add edge Aagent -> Ttopic
+     * Rebuilds this graph from the current state of {@link graph.TopicManagerSingleton}.
+     *
+     * <p>Clears any existing nodes and edges, then creates topic nodes, agent nodes, and
+     * directed edges reflecting subscriptions and publisher registrations.</p>
      */
     public void createFromTopics(){
         this.clear();
@@ -73,8 +87,11 @@ public class Graph extends ArrayList<Node> {
     }
 
     /**
-     * Graph-level cycle detection over all nodes in this Graph.
-     * Uses DFS with colors (0=unvisited,1=visiting,2=done).
+     * Detects whether this graph contains a cycle using depth-first search.
+     *
+     * <p>Uses a three-color DFS (unvisited, visiting, done) across all nodes in the graph.</p>
+     *
+     * @return {@code true} if a directed cycle exists; {@code false} otherwise
      */
     public boolean hasCycles() {
         Map<Node, Integer> state = new HashMap<>();

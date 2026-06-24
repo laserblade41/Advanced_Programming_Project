@@ -12,8 +12,38 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
 
-// These are the servlets that handle the /publish endpoint.
+/**
+ * Application servlet that handles the {@code /publish} endpoint for topic message publication.
+ *
+ * <p>This servlet is part of the computational-graph dashboard. It extracts a topic name and
+ * message value from the request, optionally publishes them via
+ * {@link graph.TopicManagerSingleton}, and always returns an HTML page listing all topics
+ * and their last published values.</p>
+ *
+ * <p><strong>Parameter extraction:</strong> Topic and message are read from query parameters
+ * ({@code topic}/{@code Topic} and {@code message}/{@code Message}). If absent, URI segments
+ * are used as a fallback (e.g. {@code /publish/myTopic/myValue} or
+ * {@code /myTopic/myValue}).</p>
+ *
+ * <p>When a message is successfully published, embedded JavaScript refreshes the parent
+ * dashboard's graph frame (dashboard-specific behavior).</p>
+ *
+ * <p><strong>Thread safety:</strong> Relies on {@link graph.TopicManagerSingleton} for
+ * concurrent topic access; the servlet itself holds no mutable instance state.</p>
+ *
+ * @see Servlet
+ * @see graph.TopicManagerSingleton
+ */
 public class TopicDisplayer implements Servlet {
+
+    /**
+     * Publishes a message to a topic (if parameters are present) and returns an HTML table
+     * of all topic values.
+     *
+     * @param ri the parsed request containing topic and message in parameters or URI segments
+     * @param toClient the client output stream for the HTTP response
+     * @throws IOException if an I/O error occurs while writing the response
+     */
     @Override
     public void handle(RequestParser.RequestInfo ri, OutputStream toClient) throws IOException {
         // Extract the topic and message from the HTTP request.
@@ -214,6 +244,13 @@ public class TopicDisplayer implements Servlet {
                 .replace("'", "&#x27;");
     }
 
+    /**
+     * Releases servlet resources.
+     *
+     * <p>Currently a no-op; no persistent resources are held between requests.</p>
+     *
+     * @throws IOException if an I/O error occurs during cleanup
+     */
     @Override
     public void close() throws IOException {
         // Clean up resources if needed

@@ -14,8 +14,36 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * View-layer utility that generates HTML graph visualization pages.
+ *
+ * <p>Reads the {@code html_files/graph.html} Vis.js template, injects dynamic node and
+ * edge data from a {@link configs.Graph}, and appends a script to refresh the dashboard's
+ * topic-values frame. Used by {@link servlets.ConfLoader} to render the computational
+ * graph in the browser.</p>
+ *
+ * <p>Topic nodes (names starting with {@code "T"}) display their last published value
+ * in the label when available via {@link graph.TopicManagerSingleton}.</p>
+ *
+ * @see configs.Graph
+ * @see configs.Node
+ * @see servlets.ConfLoader
+ */
 public class HtmlGraphWriter {
 
+    /**
+     * Builds a complete HTML graph visualization as a list of lines.
+     *
+     * <p>Loads the graph template from {@code html_files/graph.html} (with filesystem
+     * fallbacks), replaces the {@code /* INJECT_GRAPH_DATA_HERE *\/} placeholder with
+     * JavaScript node/edge arrays derived from {@code g}, and appends a parent-frame
+     * reload script for the values panel.</p>
+     *
+     * @param g the graph model to visualize
+     * @param isConfigUpload {@code true} when triggered by a configuration upload;
+     *                       reserved for future use in the template logic
+     * @return a {@link List} of HTML lines, one entry per line of the output document
+     */
     public static List<String> getGraphHTML(Graph g, boolean isConfigUpload) {
         // Find and read html_files/graph.html template
         Path path = Paths.get("html_files", "graph.html");

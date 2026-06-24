@@ -13,6 +13,49 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 
+/**
+ * Default {@link HTTPServer} implementation backed by a {@link ServerSocket} and a fixed
+ * thread pool.
+ *
+ * <p>This class extends {@link Thread}. Calling {@link #start()} delegates to
+ * {@link Thread#start()}, which runs the accept loop in {@link #run()}. Each accepted
+ * client connection is handed off to a {@code ClientHandler} task submitted to an
+ * {@link ExecutorService}.</p>
+ *
+ * <p><strong>Request routing:</strong> For each incoming request, the server selects the
+ * servlet map that corresponds to the HTTP method ({@code GET}, {@code POST}, or
+ * {@code DELETE}), then finds the registered URI prefix with the <strong>longest matching
+ * prefix</strong> against the request path (query string is stripped before matching).
+ * If no servlet matches, the client receives {@code 404 Not Found}. If the HTTP method is
+ * not supported, the client receives {@code 405 Method Not Allowed}.</p>
+ *
+ * <p><strong>Thread safety:</strong></p>
+ * <ul>
+ *   <li>Servlet registries ({@code getServlets}, {@code postServlets}, {@code deleteServlets})
+ *       are {@link ConcurrentHashMap} instances, so {@link #addServlet} and
+ *       {@link #removeServlet} may be called concurrently with active request handling.</li>
+ *   <li>The {@link ExecutorService} created via {@link Executors#newFixedThreadPool(int)}
+ *       processes multiple client connections in parallel, up to {@code nThreads} at a time.</li>
+ *   <li>Because multiple pool threads may invoke {@link Servlet#handle} on the same servlet
+ *       instance concurrently, servlet implementations that hold shared mutable state must
+ *       provide their own synchronization.</li>
+ *   <li>The {@code isRunning} flag coordinates shutdown of the accept loop.</li>
+ * </ul>
+ *
+ * <p>Example usage:</p>
+ * <pre>{@code
+ * MyHTTPServer server = new MyHTTPServer(8080, 5);
+ * server.addServlet("GET", "/app/", new HtmlLoader("html_files"));
+ * server.addServlet("POST", "/api/data", myServlet);
+ * server.start();
+ * // ... block or run other application logic ...
+ * server.close();
+ * }</pre>
+ *
+ * @see HTTPServer
+ * @see RequestParser
+ * @see Servlet
+ */
 public class MyHTTPServer extends Thread implements HTTPServer {
 
     private int port;
@@ -25,6 +68,12 @@ public class MyHTTPServer extends Thread implements HTTPServer {
     private ConcurrentHashMap<String, Servlet> postServlets;
     private ConcurrentHashMap<String, Servlet> deleteServlets;
 
+    /**
+     * Creates a new HTTP server bound to the given port with a fixed-size thread pool.
+     *
+     * @param port the TCP port on which the server will listen for incoming connections
+     * @param nThreads the maximum number of client connections handled concurrently
+     */
     public MyHTTPServer(int port, int nThreads) {
         this.port = port;
         this.isRunning = false;
@@ -37,6 +86,17 @@ public class MyHTTPServer extends Thread implements HTTPServer {
         this.deleteServlets = new ConcurrentHashMap<>();
     }
 
+    /**
+     * Registers a servlet for the given HTTP method and URI prefix.
+     *
+     * <p>The HTTP method is matched case-insensitively. Supported methods are
+     * {@code GET}, {@code POST}, and {@code DELETE}. An existing mapping for the same
+     * method and URI is overwritten.</p>
+     *
+     * @param httpCommand the HTTP method name (e.g. {@code "GET"})
+     * @param uri the URI path prefix to match (e.g. {@code "/app/"})
+     * @param s the servlet instance that will handle matching requests
+     */
     @Override
     public void addServlet(String httpCommand, String uri, Servlet s) {
         switch (httpCommand.toUpperCase()) {
@@ -52,6 +112,15 @@ public class MyHTTPServer extends Thread implements HTTPServer {
         }
     }
 
+    /**
+     * Removes a servlet mapping for the given HTTP method and URI prefix.
+     *
+     * <p>The HTTP method is matched case-insensitively. If no mapping exists, this method
+     * has no effect.</p>
+     *
+     * @param httpCommand the HTTP method name of the mapping to remove
+     * @param uri the URI path prefix of the mapping to remove
+     */
     @Override
     public void removeServlet(String httpCommand, String uri) {
         switch (httpCommand.toUpperCase()) {
@@ -67,12 +136,25 @@ public class MyHTTPServer extends Thread implements HTTPServer {
         }
     }
 
+    /**
+     * Starts the server accept loop on this thread.
+     *
+     * <p>Delegates to {@link Thread#start()}, which invokes {@link #run()} asynchronously.</p>
+     */
     // Implementing start by simply starting the Thread (Option A from the document)
     @Override
     public void start() {
         super.start();
     }
 
+    /**
+     * Main server loop: binds a {@link ServerSocket}, accepts client connections, and
+     * dispatches each to the thread pool.
+     *
+     * <p>The server socket has a 1-second accept timeout so the loop can periodically check
+     * {@code isRunning} and exit cleanly. When the loop ends (normally or due to I/O error),
+     * {@link #close()} is called from a {@code finally} block.</p>
+     */
     @Override
     public void run() {
         this.isRunning = true;
@@ -99,6 +181,15 @@ public class MyHTTPServer extends Thread implements HTTPServer {
         }
     }
 
+    /**
+     * Shuts down the server and releases all resources.
+     *
+     * <p>This method sets {@code isRunning} to {@code false}, closes the server socket,
+     * shuts down the thread pool (waiting up to 2 seconds for termination), and invokes
+     * {@link Servlet#close()} on every registered servlet. If called from a thread other
+     * than the server thread, it also waits for the server thread to finish via
+     * {@link Thread#join()}.</p>
+     */
     @Override
     public void close() {
         this.isRunning = false;

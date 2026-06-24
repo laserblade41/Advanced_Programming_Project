@@ -15,6 +15,27 @@ import java.util.List;
 import graph.*;
 import graph.TopicManagerSingleton.TopicManager;
 
+/**
+ * Reflection-based configuration loader that wires agents from a text file.
+ *
+ * <p>Each agent entry in the configuration file occupies three lines:</p>
+ * <ol>
+ *   <li>Fully qualified agent class name</li>
+ *   <li>Comma-separated input topic names (subscriptions)</li>
+ *   <li>Comma-separated output topic names (publish registrations)</li>
+ * </ol>
+ *
+ * <p>Agents are instantiated via reflection, wrapped in a {@link graph.ParallelAgent}
+ * (queue capacity 10), and wired to the {@link graph.TopicManagerSingleton} topic registry.
+ * The configuration file is searched in multiple locations: the given path, {@code user.dir},
+ * {@code config_files/}, parent directories, and the classpath.</p>
+ *
+ * <p><strong>Usage:</strong> Call {@link #setConfFile(String)} then {@link #create()}.
+ * Call {@link #close()} to unsubscribe all agents and shut down parallel wrappers.</p>
+ *
+ * @see Config
+ * @see graph.ParallelAgent
+ */
 public class GenericConfig implements Config {
 
     private static class AgentWiring {
@@ -32,10 +53,29 @@ public class GenericConfig implements Config {
     private String confFile;
     private final List<AgentWiring> wirings = new ArrayList<AgentWiring>();
 
+    /**
+     * Sets the path to the configuration file.
+     *
+     * <p>Must be called before {@link #create()}. The path may be absolute or relative;
+     * multiple search locations are tried at load time.</p>
+     *
+     * @param path the filesystem or classpath path to the configuration file
+     */
     public void setConfFile(String path) {
         this.confFile = path;
     }
 
+    /**
+     * Reads the configuration file, instantiates agents, and wires them to topics.
+     *
+     * <p>If agents were previously loaded, {@link #close()} is called first. Each agent
+     * is wrapped in a {@link graph.ParallelAgent} and subscribed/registered on the
+     * specified topics.</p>
+     *
+     * @throws IllegalStateException if the configuration file path was not set, the file
+     *         format is invalid (line count not divisible by 3), or the file cannot be read
+     * @throws RuntimeException if agent instantiation via reflection fails
+     */
     @Override
     public void create() {
         if (confFile == null || confFile.isEmpty()) {
@@ -257,16 +297,31 @@ public class GenericConfig implements Config {
         return parts;
     }
 
+    /**
+     * Returns the display name of this configuration loader.
+     *
+     * @return {@code "Generic Config"}
+     */
     @Override
     public String getName() {
         return "Generic Config";
     }
 
+    /**
+     * Returns the version of this configuration loader.
+     *
+     * @return {@code 1}
+     */
     @Override
     public int getVersion() {
         return 1;
     }
 
+    /**
+     * Unsubscribes all wired agents from topics and closes their parallel wrappers.
+     *
+     * <p>Clears the internal wiring list so a subsequent {@link #create()} starts fresh.</p>
+     */
     @Override
     public void close() {
         TopicManager tm = TopicManagerSingleton.get();

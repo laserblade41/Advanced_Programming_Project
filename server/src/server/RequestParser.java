@@ -5,8 +5,40 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Stateless utility for parsing HTTP/1.1 requests from a {@link BufferedReader}.
+ *
+ * <p>{@link RequestParser} reads the request line, headers, query parameters, and request
+ * body, producing a {@link RequestInfo} object that is passed to
+ * {@link servlets.Servlet#handle}. It is used internally by {@link MyHTTPServer} before
+ * servlet dispatch.</p>
+ *
+ * <p><strong>Thread safety:</strong> This class has no mutable static state. Each call to
+ * {@link #parseRequest} should use its own {@link BufferedReader} on a single connection
+ * thread; the reader must not be shared across threads.</p>
+ *
+ * <p><strong>Body reading modes:</strong></p>
+ * <ul>
+ *   <li><strong>Standard HTTP:</strong> When {@code Content-Length} is present and greater
+ *       than zero, exactly that many bytes are read as the request body after the header
+ *       block.</li>
+ *   <li><strong>Course/test mode:</strong> Activated when {@code Content-Length} is
+ *       {@code 5} or the {@code Host} header is {@code example.com}. In this mode, additional
+ *       {@code key=value} lines are read after the headers, followed by a content block
+ *       terminated by an empty line.</li>
+ * </ul>
+ *
+ * @see RequestInfo
+ * @see MyHTTPServer
+ */
 public class RequestParser {
 
+    /**
+     * Immutable snapshot of a parsed HTTP request.
+     *
+     * <p>Instances are created by {@link RequestParser#parseRequest} and passed to servlets
+     * for request handling. Field values are exposed through getter methods only.</p>
+     */
     public static class RequestInfo {
         private String httpCommand;
         private String uri;
@@ -14,6 +46,15 @@ public class RequestParser {
         private Map<String, String> parameters;
         private byte[] content;
 
+        /**
+         * Creates a new request info object with the parsed request data.
+         *
+         * @param httpCommand the HTTP method from the request line (e.g. {@code "GET"})
+         * @param uri the full request URI including the query string, if present
+         * @param uriSegments path segments after the leading slash (empty array for {@code "/"})
+         * @param parameters query-string and additional parameters extracted during parsing
+         * @param content raw request body bytes (empty array if no body was present)
+         */
         public RequestInfo(String httpCommand, String uri, String[] uriSegments,
                            Map<String, String> parameters, byte[] content) {
             this.httpCommand = httpCommand;
@@ -23,13 +64,61 @@ public class RequestParser {
             this.content = content;
         }
 
+        /**
+         * Returns the HTTP method from the request line.
+         *
+         * @return the HTTP command (e.g. {@code "GET"}, {@code "POST"}, {@code "DELETE"})
+         */
         public String getHttpCommand() { return httpCommand; }
+
+        /**
+         * Returns the full request URI as it appeared on the request line.
+         *
+         * @return the URI string, including the query string if one was present
+         */
         public String getUri() { return uri; }
+
+        /**
+         * Returns the path portion of the URI split into segments.
+         *
+         * <p>The leading slash is stripped before splitting. For a request to {@code "/"},
+         * an empty array is returned.</p>
+         *
+         * @return an array of path segments (never {@code null})
+         */
         public String[] getUriSegments() { return uriSegments; }
+
+        /**
+         * Returns the parameters map extracted from the query string and, in course/test
+         * mode, from additional {@code key=value} lines after the headers.
+         *
+         * @return a {@link Map} of parameter names to values (never {@code null}); callers
+         *         should treat it as read-only unless intentional mutation is required
+         */
         public Map<String, String> getParameters() { return parameters; }
+
+        /**
+         * Returns the raw bytes of the request body.
+         *
+         * @return the body content as a byte array (never {@code null}; empty array if no
+         *         body was present)
+         */
         public byte[] getContent() { return content; }
     }
 
+    /**
+     * Parses an HTTP request from the given reader.
+     *
+     * <p>Reads the request line, header block, query parameters, and body according to the
+     * rules described in the class documentation. The reader should be positioned at the
+     * first byte of the request when this method is called.</p>
+     *
+     * @param reader the buffered input stream for the client connection, positioned at the
+     *               start of the request
+     * @return a populated {@link RequestInfo}, or {@code null} if the request line is
+     *         missing, empty, or malformed
+     * @throws IOException if an I/O error occurs while reading from the reader
+     */
     public static RequestInfo parseRequest(BufferedReader reader) throws IOException {
         String requestLine = reader.readLine();
         if (requestLine == null || requestLine.isEmpty()) {
