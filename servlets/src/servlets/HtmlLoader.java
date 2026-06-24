@@ -115,7 +115,8 @@ public class HtmlLoader implements Servlet {
         // Load the file content
         byte[] fileBytes = Files.readAllBytes(file.toPath());
 
-        // Determine correct Content-Type header
+        // Map the file extension to a MIME type so browsers render assets correctly
+        // (defaults to text/html for unknown/extension-less files).
         String contentType = "text/html";
         String lowerName = file.getName().toLowerCase();
         if (lowerName.endsWith(".css")) {

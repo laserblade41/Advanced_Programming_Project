@@ -3,6 +3,12 @@ package configs;
 /**
  * Lifecycle contract for loading and wiring agents into the computational graph.
  *
+ * <p><strong>SOLID:</strong> {@code Config} is an Open/Closed extension point - the system
+ * supports new ways of building a graph (file-based {@link GenericConfig}, hard-coded
+ * {@link MathExampleConfig}, or any future loader) purely by adding implementations, with no
+ * change to the consuming code. Callers depend on this abstraction (Dependency Inversion)
+ * rather than on a specific loader.</p>
+ *
  * <p>A {@code Config} implementation creates {@link graph.Agent} instances, subscribes them
  * to input {@link graph.Topic}s, and registers them as publishers on output topics. The
  * configuration can be torn down via {@link #close()} to release subscriptions and

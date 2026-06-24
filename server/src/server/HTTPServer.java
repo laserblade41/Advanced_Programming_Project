@@ -4,6 +4,12 @@ import servlets.Servlet;
 /**
  * Contract for a minimal, servlet-based HTTP server.
  *
+ * <p><strong>SOLID:</strong> this interface enforces Dependency Inversion - callers (e.g.
+ * {@code Main}) program against {@code HTTPServer} rather than the concrete
+ * {@link MyHTTPServer}, and the server in turn dispatches to the {@link servlets.Servlet}
+ * abstraction. It is also Open/Closed: new routes/behaviors are added by registering new
+ * servlets via {@link #addServlet}, never by editing the server itself.</p>
+ *
  * <p>This interface defines the registration and lifecycle API for an embeddable HTTP server.
  * Implementations accept incoming TCP connections, parse requests, and dispatch them to
  * registered {@link servlets.Servlet} handlers. The server extends {@link Runnable} so it

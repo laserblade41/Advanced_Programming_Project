@@ -73,11 +73,14 @@ public class IncAgent implements Agent {
      * @param topic the topic that published the message
      * @param msg the incoming message
      */
+    // synchronized for safe publication of state/results even if invoked from multiple threads.
     @Override
     public synchronized void callback(String topic, Message msg) {
+        // Single-input agent: only react to messages on its one subscribed topic.
         if (subs == null || subs.length < 1 || !topic.equals(subs[0])) {
             return;
         }
+        // Guard against non-numeric payloads; only publish input+1 for valid numbers.
         double v = msg.asDouble;
         if (!Double.isNaN(v)) {
             if (pubs != null && pubs.length >= 1) {

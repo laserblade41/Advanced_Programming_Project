@@ -78,7 +78,9 @@ public class MyHTTPServer extends Thread implements HTTPServer {
         this.port = port;
         this.isRunning = false;
 
-        // Executor service to handle clients concurrently
+        // Bounded thread pool: caps concurrency at nThreads so a flood of connections cannot
+        // spawn unlimited threads. Tasks queue up and are reused, which is far cheaper than
+        // creating a fresh Thread per request.
         this.threadPool = Executors.newFixedThreadPool(nThreads);
 
         this.getServlets = new ConcurrentHashMap<>();
@@ -160,16 +162,19 @@ public class MyHTTPServer extends Thread implements HTTPServer {
         this.isRunning = true;
         try {
             this.serverSocket = new ServerSocket(this.port);
-            // Set timeout to 1 second so the loop can check isRunning periodically
+            // accept() normally blocks forever, which would make a clean shutdown impossible.
+            // A 1-second socket timeout turns it into a poll: every second accept() throws
+            // SocketTimeoutException, the loop re-checks isRunning, and close() can break us out.
             this.serverSocket.setSoTimeout(1000);
 
             while (this.isRunning) {
                 try {
                     Socket clientSocket = serverSocket.accept();
-                    // Pass the connected client to the thread pool
+                    // Hand the connection to a pool thread so the accept loop stays free to
+                    // take the next connection immediately (one thread per in-flight request).
                     threadPool.submit(new ClientHandler(clientSocket));
                 } catch (SocketTimeoutException e) {
-                    // Timeout is expected every second; loop continues if isRunning is true
+                    // Expected once per second; not an error - just loop and re-check isRunning.
                 }
             }
         } catch (IOException e) {
@@ -192,6 +197,8 @@ public class MyHTTPServer extends Thread implements HTTPServer {
      */
     @Override
     public void close() {
+        // Ordered shutdown: (1) flip the flag so the accept loop exits, (2) close the server
+        // socket to unblock any pending accept(), (3) drain the pool, (4) release servlets.
         this.isRunning = false;
         try {
             if (serverSocket != null && !serverSocket.isClosed()) {
@@ -201,7 +208,7 @@ public class MyHTTPServer extends Thread implements HTTPServer {
             // ignore
         }
 
-        // Shut down the thread pool smoothly
+        // Stop accepting new tasks and give in-flight handlers up to 2s to finish gracefully.
         threadPool.shutdown();
         try {
             threadPool.awaitTermination(2, TimeUnit.SECONDS);
@@ -209,7 +216,7 @@ public class MyHTTPServer extends Thread implements HTTPServer {
             Thread.currentThread().interrupt();
         }
 
-        // Close all registered servlets
+        // Let each servlet release its own resources (Servlet#close).
         try {
             closeAllServlets(getServlets);
             closeAllServlets(postServlets);
@@ -218,6 +225,9 @@ public class MyHTTPServer extends Thread implements HTTPServer {
             // ignore
         }
 
+        // If close() was called from an external thread (not the server thread itself, e.g.
+        // the finally block in run()), wait for the accept loop to fully terminate. The
+        // guard avoids a thread trying to join() itself, which would deadlock.
         if (Thread.currentThread() != this) {
             try {
                 this.join();
@@ -243,22 +253,23 @@ public class MyHTTPServer extends Thread implements HTTPServer {
 
         @Override
         public void run() {
+            // try-with-resources guarantees the reader/stream are closed even on error.
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                  OutputStream out = clientSocket.getOutputStream()) {
 
-                // 1. Parse the incoming request
+                // 1. Parse the raw socket bytes into a structured request object.
                 RequestParser.RequestInfo requestInfo = RequestParser.parseRequest(reader);
 
                 if (requestInfo != null) {
-                    // 2. Select the correct map based on HTTP command
+                    // 2. Pick the registry for this HTTP verb; an unknown verb -> 405.
                     Map<String, Servlet> targetMap = getTargetMap(requestInfo.getHttpCommand());
 
                     if (targetMap != null) {
-                        // 3. Find the longest matching URI prefix
+                        // 3. Route by longest-prefix match so specific paths win over general ones.
                         Servlet matchingServlet = findLongestMatchServlet(targetMap, requestInfo.getUri());
 
                         if (matchingServlet != null) {
-                            // 4. Handle the request
+                            // 4. Delegate the response entirely to the chosen servlet.
                             matchingServlet.handle(requestInfo, out);
                         } else {
                             sendErrorResponse(out, 404, "Not Found");
@@ -288,8 +299,11 @@ public class MyHTTPServer extends Thread implements HTTPServer {
             };
         }
 
-        // Implementation of the longest prefix match algorithm
+        // Longest-prefix-match routing: among all registered URI prefixes that the request
+        // path starts with, pick the longest (most specific) one. This lets e.g. "/app/" and
+        // "/app/admin/" coexist, with the request always going to the deepest match.
         private Servlet findLongestMatchServlet(Map<String, Servlet> map, String requestUri) {
+            // Strip the query string so only the path participates in matching.
             String requestPath = requestUri.split("\\?")[0];
             String longestMatch = "";
             Servlet bestServlet = null;

@@ -3,6 +3,16 @@ package graph;
 /**
  * Core interface for computational nodes in the pub-sub graph engine.
  *
+ * <p><strong>Design pattern - Observer contract:</strong> {@code Agent} is the "observer"
+ * abstraction of the Observer pattern, with {@link #callback} acting as the update/notify
+ * method that a {@link Topic} invokes on publish.</p>
+ *
+ * <p><strong>SOLID:</strong> this interface is the seam that satisfies the Open/Closed and
+ * Dependency Inversion principles. The engine ({@link Topic}, {@link ParallelAgent},
+ * configs) depends only on this abstraction, so new computational behaviors can be added by
+ * writing new {@code Agent} implementations - the engine is open for extension but closed
+ * for modification, and high-level modules never depend on concrete agent classes.</p>
+ *
  * <p>An {@code Agent} subscribes to one or more {@link Topic}s and reacts to incoming
  * {@link Message}s by publishing results to output topics. Agents are wired together at
  * runtime by {@link configs.Config} implementations (e.g. {@link configs.GenericConfig}) and

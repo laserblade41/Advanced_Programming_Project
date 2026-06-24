@@ -6,6 +6,14 @@ import java.util.concurrent.BlockingQueue;
 /**
  * Decorator that executes an {@link Agent}'s {@link Agent#callback} on a background worker thread.
  *
+ * <p><strong>Design pattern - Active Object:</strong> this class is a textbook implementation
+ * of the Active Object pattern. The publisher thread that calls {@link #callback} (the
+ * "method invocation") never runs the agent's logic itself; instead the call is reified as a
+ * message, placed on the {@link BlockingQueue}, and later executed by a single private worker
+ * thread (the "scheduler/activation"). This decouples <em>method invocation</em> from
+ * <em>method execution</em>, so a slow agent can never block the caller and every invocation
+ * for a given agent is serialized on one thread.</p>
+ *
  * <p>{@code ParallelAgent} wraps a delegate agent and enqueues incoming messages into a
  * bounded {@link BlockingQueue}. A dedicated worker thread dequeues messages and invokes
  * the delegate's {@link Agent#callback}, preventing long-running agent logic from blocking
@@ -27,6 +35,8 @@ public class ParallelAgent implements Agent {
     private final BlockingQueue<TopicMessage> queue;
     private final Thread workerThread;
 
+    // The "request" object of the Active Object pattern: a reified method call that bundles
+    // the (topic, message) arguments so they can be queued and replayed on the worker thread.
     private static class TopicMessage {
         public final String topic;
         public final Message message;
@@ -53,7 +63,10 @@ public class ParallelAgent implements Agent {
         // Initialize a thread-safe BlockingQueue with the given capacity
         this.queue = new ArrayBlockingQueue<>(capacity);
 
-        // Create and start the background worker thread
+        // Create and start the single background worker thread. This thread is the "active"
+        // part of the Active Object: it is the only thread that ever touches the wrapped
+        // agent, which is what serializes execution and removes the need to synchronize the
+        // delegate's own state.
         this.workerThread = new Thread(() -> {
             // Loop until the thread is interrupted (usually by close())
             while (!Thread.currentThread().isInterrupted()) {
@@ -86,7 +99,9 @@ public class ParallelAgent implements Agent {
     @Override
     public void callback(String topic, Message msg) {
         try {
-            // put() blocks/waits if the queue has reached its maximum capacity
+            // Enqueue-and-return: the caller's involvement ends here. The actual agent work
+            // happens later on the worker thread, which is the essence of the Active Object
+            // decoupling. put() applies back-pressure (blocks) only when the queue is full.
             queue.put(new TopicMessage(topic, msg));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

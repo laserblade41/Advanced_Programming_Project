@@ -6,6 +6,12 @@ import graph.*;
 /**
  * Generic two-input binary-operation agent.
  *
+ * <p><strong>Design pattern - Strategy:</strong> the actual arithmetic is not hard-coded.
+ * It is injected as a {@link BinaryOperator}{@code <Double>} ({@link #op}), so a single agent
+ * class can perform addition, subtraction, multiplication, etc., depending on the lambda
+ * supplied at construction (see {@link MathExampleConfig}). The operation is the
+ * interchangeable "strategy".</p>
+ *
  * <p>Subscribes to two input topics and applies a {@link BinaryOperator} when both
  * inputs have valid numeric values, publishing the result to an output topic. The
  * agent name is {@code "A"} + {@code baseName} (e.g. {@code "Aplus"}).</p>
@@ -25,6 +31,7 @@ public class BinOpAgent implements Agent {
     private final String in1;
     private final String in2;
     private final String out;
+    // The injected Strategy: the binary math operation this agent applies to its two inputs.
     private final BinaryOperator<Double> op;
 
     private double val1 = Double.NaN;
@@ -101,7 +108,9 @@ public class BinOpAgent implements Agent {
             return;
         }
 
+        // Only fire once BOTH operands have arrived as valid numbers; until then we wait.
         if (!Double.isNaN(val1) && !Double.isNaN(val2)) {
+            // Delegate the computation to the injected strategy, then publish downstream.
             double res = op.apply(val1, val2);
             TopicManagerSingleton.get().getTopic(out).publish(new Message(res));
         }

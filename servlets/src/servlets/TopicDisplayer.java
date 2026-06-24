@@ -77,20 +77,22 @@ public class TopicDisplayer implements Servlet {
             }
         }
 
-        // Publish the message to the appropriate topic using the TopicManagerSingleton
+        // Only publish when both a topic and a message were resolved. This is the entry point
+        // that injects user input into the pub-sub graph, triggering any subscribed agents.
         boolean published = false;
         if (topic != null && message != null && !topic.trim().isEmpty() && !message.trim().isEmpty()) {
             TopicManagerSingleton.get().getTopic(topic.trim()).publish(new Message(message.trim()));
             published = true;
         }
 
-        // Build the HTML response containing the table of all topics and their last values
+        // Build the HTML response: one table row per topic showing its last published value.
         StringBuilder rowsHtml = new StringBuilder();
         Map<String, Topic> topics = TopicManagerSingleton.get().getAllTopics();
 
         if (topics.isEmpty()) {
             rowsHtml.append("<tr><td colspan='2' class='no-topics'>No topics registered yet</td></tr>");
         } else {
+            // Sort names so the table order is stable/deterministic between refreshes.
             List<String> sortedNames = new ArrayList<>(topics.keySet());
             Collections.sort(sortedNames);
             for (String name : sortedNames) {
@@ -235,6 +237,8 @@ public class TopicDisplayer implements Servlet {
         toClient.flush();
     }
 
+    // Escapes HTML metacharacters so topic names/values can't break the page layout or inject
+    // markup (basic XSS guard) when echoed back into the table.
     private String escapeHtml(String s) {
         if (s == null) return "";
         return s.replace("&", "&amp;")

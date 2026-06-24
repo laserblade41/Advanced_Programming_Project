@@ -23,6 +23,9 @@ public class MathExampleConfig implements Config {
      */
     @Override
     public void create() {
+        // Each lambda is a concrete Strategy plugged into the generic BinOpAgent. The agents
+        // also self-wire to topics in their constructor, forming the pipeline:
+        //   (A + B) -> R1 and (A - B) -> R2, then (R1 * R2) -> R3.
         new BinOpAgent("plus", "A", "B", "R1", (x,y)->x+y);
         new BinOpAgent("minus", "A", "B", "R2", (x,y)->x-y);
         new BinOpAgent("mul", "R1", "R2", "R3", (x,y)->x*y);

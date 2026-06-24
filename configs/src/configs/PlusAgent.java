@@ -87,12 +87,16 @@ public class PlusAgent implements Agent {
      * @param topic the topic that published the message
      * @param msg the incoming message
      */
+    // synchronized because, although a ParallelAgent wrapper normally serializes calls, this
+    // agent keeps mutable cross-call state (x/y/hasX/hasY); the lock guards against any
+    // concurrent publisher touching that state directly.
     @Override
     public synchronized void callback(String topic, Message msg) {
         if (subs == null || subs.length < 2) {
             return;
         }
 
+        // Route the incoming value to the correct operand slot based on which topic sent it.
         double v = msg.asDouble;
         if (topic.equals(subs[0])) {
             x = v;
@@ -101,9 +105,12 @@ public class PlusAgent implements Agent {
             y = v;
             hasY = true;
         } else {
-            return;
+            return; // message from an unrelated topic: ignore.
         }
 
+        // Only emit a sum once BOTH inputs have arrived and are valid numbers (not NaN). This
+        // "wait for all inputs" gate is what makes the agent correct in an async graph where
+        // the two operands can arrive in any order and at different times.
         if (hasX && hasY && !Double.isNaN(x) && !Double.isNaN(y)) {
             if (pubs != null && pubs.length >= 1) {
                 TopicManager tm = TopicManagerSingleton.get();

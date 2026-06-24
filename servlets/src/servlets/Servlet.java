@@ -7,6 +7,13 @@ import server.RequestParser;
 /**
  * Core extension point for handling HTTP requests in the server framework.
  *
+ * <p><strong>SOLID:</strong> {@code Servlet} is the abstraction that decouples the server
+ * from request-handling logic. {@link server.MyHTTPServer} dispatches to this interface and
+ * never knows the concrete handler (Dependency Inversion); new endpoints are added by writing
+ * new {@code Servlet} implementations and registering them, with zero changes to the server
+ * (Open/Closed). Each implementation also tends to have a single responsibility - serving
+ * files, publishing messages, loading configs, etc.</p>
+ *
  * <p>A {@code Servlet} receives a parsed {@link RequestParser.RequestInfo} and the client's
  * {@link OutputStream}. It is responsible for writing a <strong>complete</strong> HTTP/1.1
  * response, including the status line, headers, the blank line separator ({@code \r\n\r\n}),

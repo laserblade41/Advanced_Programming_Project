@@ -63,17 +63,21 @@ public class HtmlGraphWriter {
             template = getDefaultFallbackTemplate();
         }
 
-        // Dynamically build JS representation for nodes and edges
+        // Build the Vis.js "nodes" array as a JS literal. We translate each graph Node into a
+        // { id, label, type } object that the client-side visualization library understands.
         StringBuilder nodesJs = new StringBuilder();
         nodesJs.append("[\n");
         for (int i = 0; i < g.size(); i++) {
             Node n = g.get(i);
             String id = n.getName();
+            // Convention from Graph.createFromTopics: topic node names are prefixed with "T".
             boolean isTopic = id.startsWith("T");
             String label = id;
             String type = "agent";
             
             if (isTopic) {
+                // Strip the "T" prefix for display and, when available, annotate the node with
+                // the topic's most recent value so the live state shows on the diagram.
                 String topicName = id.substring(1);
                 type = "topic";
                 Topic t = TopicManagerSingleton.get().getTopic(topicName);
@@ -94,6 +98,8 @@ public class HtmlGraphWriter {
         }
         nodesJs.append("\n        ]");
 
+        // Build the Vis.js "edges" array: flatten every node's adjacency list into directed
+        // { from, to } pairs that mirror the subscribe/publish data flow.
         StringBuilder edgesJs = new StringBuilder();
         edgesJs.append("[\n");
         List<String> edgeLines = new ArrayList<>();
@@ -110,7 +116,9 @@ public class HtmlGraphWriter {
         }
         edgesJs.append("\n        ]");
 
-        // Replace the placeholder with dynamic nodes and edges data
+        // Inject the generated data into the static template. The template carries a known
+        // placeholder token which we swap for the real nodes/edges declarations - keeping
+        // presentation (HTML/CSS/JS template) separate from the data (the view layer's job).
         String result = template;
         String graphDataJs = "const nodesData = " + nodesJs.toString() + ";\n" +
                              "const edgesData = " + edgesJs.toString() + ";";
@@ -135,6 +143,8 @@ public class HtmlGraphWriter {
         return list;
     }
 
+    // Escapes characters that would otherwise break out of the single-quoted JS string
+    // literals we emit (backslash must be escaped first to avoid double-escaping).
     private static String escapeJs(String s) {
         if (s == null) return "";
         return s.replace("\\", "\\\\")

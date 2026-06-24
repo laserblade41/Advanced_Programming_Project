@@ -6,6 +6,13 @@ import java.util.List;
 /**
  * A named pub-sub channel in the computational graph.
  *
+ * <p><strong>Design pattern - Observer / Publish-Subscribe:</strong> a {@code Topic} is the
+ * "subject". Agents register interest via {@link #subscribe} and are stored in {@link #subs};
+ * when {@link #publish} is called, every observer is notified through its
+ * {@link Agent#callback}. Publishers and subscribers never reference each other directly -
+ * they are decoupled through this topic, which is what lets configurations rewire the graph
+ * freely.</p>
+ *
  * <p>Agents subscribe to a topic to receive messages via {@link Agent#callback}, and
  * register as publishers when they produce output on that topic. Calling {@link #publish}
  * stores the message as the last value and synchronously notifies all subscribers.</p>
@@ -75,7 +82,11 @@ public class Topic {
      * @param m the message to publish
      */
     public void publish(Message m){
+        // Cache the value first so late observers / the dashboard can read the latest state.
         this.lastMessage = m;
+        // Observer notification: fan out the message to every subscriber. Note this runs on
+        // the publisher's own thread - each subscriber is typically a ParallelAgent that
+        // immediately hands the work off to its own worker thread, keeping this loop fast.
         for(Agent a:subs){
             a.callback(name, m);
         }

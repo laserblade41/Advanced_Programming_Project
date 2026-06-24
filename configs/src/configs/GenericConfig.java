@@ -18,6 +18,12 @@ import graph.TopicManagerSingleton.TopicManager;
 /**
  * Reflection-based configuration loader that wires agents from a text file.
  *
+ * <p><strong>Reflection API:</strong> agents are named by fully-qualified class name in the
+ * config file and instantiated at runtime via {@link java.lang.reflect.Constructor}. This is
+ * what makes the engine extensible without recompilation - dropping a new {@code Agent} class
+ * on the classpath and naming it in a config file is enough to add it to the graph (an
+ * Open/Closed, plugin-style design).</p>
+ *
  * <p>Each agent entry in the configuration file occupies three lines:</p>
  * <ol>
  *   <li>Fully qualified agent class name</li>
@@ -89,23 +95,30 @@ public class GenericConfig implements Config {
         List<String> lines = readConfigLines();
         System.out.println("[GenericConfig] Configuration lines read from file: " + lines);
 
+        // The format is strictly 3 lines per agent (class / subs / pubs); a count not
+        // divisible by 3 means the file is malformed.
         if (lines.size() % 3 != 0) {
             throw new IllegalStateException("invalid config file format");
         }
 
         TopicManager tm = TopicManagerSingleton.get();
 
+        // Walk the file in groups of three lines, building one agent per group.
         for (int i = 0; i < lines.size(); i += 3) {
-            String className = lines.get(i);
-            String[] subs = parseSubs(lines.get(i + 1));
-            String[] pubs = parseSubs(lines.get(i + 2));
+            String className = lines.get(i);          // line 1: agent class
+            String[] subs = parseSubs(lines.get(i + 1)); // line 2: input topics
+            String[] pubs = parseSubs(lines.get(i + 2)); // line 3: output topics
 
             System.out.println("[GenericConfig] Processing agent " + className + " with subs: " + java.util.Arrays.toString(subs) + ", pubs: " + java.util.Arrays.toString(pubs));
             try {
+                // Build the concrete agent via reflection from its class name.
                 Agent agent = createAgent(className, subs, pubs);
                 System.out.println("[GenericConfig] Successfully instantiated agent: " + agent.getClass().getName());
 
+                // Every agent is wrapped in a ParallelAgent (Active Object) so its callback
+                // runs off the publisher's thread. Capacity 10 bounds the per-agent backlog.
                 ParallelAgent wrapper = new ParallelAgent(agent, 10);
+                // Wire the wrapper into the pub-sub graph: subscribe to inputs, register on outputs.
                 for (String sub : subs) {
                     tm.getTopic(sub).subscribe(wrapper);
                 }
@@ -113,6 +126,7 @@ public class GenericConfig implements Config {
                     tm.getTopic(pub).addPublisher(wrapper);
                 }
 
+                // Remember the wiring so close() can later unsubscribe and shut everything down.
                 wirings.add(new AgentWiring(wrapper, subs, pubs));
             } catch (ReflectiveOperationException e) {
                 throw new RuntimeException("failed to create agent: " + className, e);
@@ -124,6 +138,8 @@ public class GenericConfig implements Config {
         String fileName = confBasename();
         IOException lastError = null;
 
+        // First try the real filesystem across every candidate location (handles the many
+        // working directories the grader / IDE may launch from).
         for (Path path : buildSearchPaths(fileName)) {
             try {
                 if (Files.exists(path)) {
@@ -134,6 +150,8 @@ public class GenericConfig implements Config {
             }
         }
 
+        // Fallback: the file may be bundled on the classpath (e.g. inside a jar). Probe both
+        // class loaders with several name variants before giving up.
         InputStream in = getClass().getClassLoader().getResourceAsStream(confFile);
         if (in == null) {
             in = Thread.currentThread().getContextClassLoader().getResourceAsStream(confFile);
@@ -169,8 +187,12 @@ public class GenericConfig implements Config {
         return slash >= 0 ? confFile.substring(slash + 1) : confFile;
     }
 
+    // Produces an ordered, de-duplicated list of locations to probe for the config file:
+    // the raw path, user.dir-relative, a conventional config_files/ folder, and then the same
+    // two patterns walked up to 6 parent directories (robust to nested project/module layouts).
     private List<Path> buildSearchPaths(String fileName) {
         List<Path> paths = new ArrayList<Path>();
+        // LinkedHashSet preserves probe order while suppressing duplicate paths.
         java.util.LinkedHashSet<String> seen = new java.util.LinkedHashSet<String>();
 
         addSearchPath(paths, seen, Paths.get(confFile));
@@ -178,6 +200,7 @@ public class GenericConfig implements Config {
         addSearchPath(paths, seen, Paths.get("config_files", fileName));
         addSearchPath(paths, seen, Paths.get(System.getProperty("user.dir"), "config_files", fileName));
 
+        // Climb the directory tree so the file is found even when launched from a subfolder.
         Path dir = Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize();
         for (int i = 0; i < 6 && dir != null; i++) {
             addSearchPath(paths, seen, dir.resolve(confFile));
@@ -223,12 +246,17 @@ public class GenericConfig implements Config {
         return lines;
     }
 
+    // Instantiates an agent by reflection, supporting two constructor conventions:
     private static Agent createAgent(String className, String[] subs, String[] pubs) throws ReflectiveOperationException {
         Class<?> clazz = loadAgentClass(className);
         try {
+            // Preferred form: Agent(String[] subs, String[] pubs). The (Object) casts stop
+            // varargs from spreading each array into separate arguments.
             Constructor<?> ctor = clazz.getConstructor(String[].class, String[].class);
             return (Agent) ctor.newInstance((Object) subs, (Object) pubs);
         } catch (NoSuchMethodException e) {
+            // Fallback form: a flat list of String parameters (subs followed by pubs). Build a
+            // matching parameter-type array and flatten the two arrays into one argument array.
             int ctorArgsCount = subs.length + pubs.length;
             Class<?>[] paramTypes = new Class<?>[ctorArgsCount];
             for (int j = 0; j < ctorArgsCount; j++) {
@@ -248,6 +276,8 @@ public class GenericConfig implements Config {
      */
     static Class<?> loadAgentClass(String className) throws ClassNotFoundException {
         ClassNotFoundException last = null;
+        // Try each candidate package against both the default and the thread context class
+        // loader; the first that resolves wins. Keeps the last failure to rethrow if none work.
         for (String candidate : resolveClassCandidates(className)) {
             try {
                 return Class.forName(candidate);
@@ -263,6 +293,9 @@ public class GenericConfig implements Config {
         throw last;
     }
 
+    // Config files may name agents using the grader's package (e.g. project_biu.configs.PlusAgent)
+    // which does not exist locally. This maps a name to a list of likely fully-qualified names
+    // by keeping the original and retrying under the local "configs"/"test" packages.
     private static String[] resolveClassCandidates(String className) {
         List<String> candidates = new ArrayList<String>();
         candidates.add(className);

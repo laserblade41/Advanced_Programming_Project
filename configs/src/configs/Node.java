@@ -95,9 +95,12 @@ public class Node {
     }
 
     private boolean hasCyclesDfs(Node n, Set<Node> visited, Set<Node> stack) {
+        // 'stack' holds the nodes on the current recursion path; revisiting one means a
+        // back-edge, i.e. a cycle.
         if (stack.contains(n)) {
             return true;
         }
+        // Already fully explored from a previous branch and found clean: no need to recurse again.
         if (visited.contains(n)) {
             return false;
         }
@@ -108,6 +111,7 @@ public class Node {
                 return true;
             }
         }
+        // Leaving this node: pop it off the active path so sibling branches aren't misjudged.
         stack.remove(n);
         return false;
     }

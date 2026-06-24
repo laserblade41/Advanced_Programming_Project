@@ -167,10 +167,12 @@ public class ConfLoader implements Servlet {
         String fileContent;
     }
 
+    // Minimal multipart/form-data parser. Operates on raw bytes (not String) so binary-safe
+    // boundaries and CRLF handling stay correct. Extracts the "filename" and "file" fields.
     private MultipartData parseMultipart(byte[] body) {
         if (body == null || body.length == 0) return null;
         try {
-            // Find boundary from the first line of the body
+            // The boundary delimiter is the very first line of the body (starts with "--").
             int endOfLine = -1;
             for (int i = 0; i < body.length; i++) {
                 if (body[i] == '\n') {
@@ -186,12 +188,14 @@ public class ConfLoader implements Servlet {
             String boundary = firstLine;
             byte[] boundaryBytes = boundary.getBytes(StandardCharsets.UTF_8);
 
+            // Each part is delimited by the boundary; iterate them looking for our fields.
             List<byte[]> parts = splitBytes(body, boundaryBytes);
             MultipartData md = new MultipartData();
 
             for (byte[] part : parts) {
                 if (part.length == 0) continue;
 
+                // A part is "headers <blank line> content"; locate that blank-line separator.
                 int doubleNewlineIndex = findDoubleNewline(part);
                 if (doubleNewlineIndex == -1) continue;
 
@@ -218,6 +222,7 @@ public class ConfLoader implements Servlet {
                 System.arraycopy(part, contentStart, contentBytes, 0, contentLen);
                 String contentStr = new String(contentBytes, StandardCharsets.UTF_8).trim();
 
+                // Match the form field by its Content-Disposition name and store its content.
                 if (headers.contains("name=\"filename\"") || headers.contains("name=\"Filename\"")) {
                     md.filename = contentStr;
                 } else if (headers.contains("name=\"file\"")) {
@@ -236,6 +241,8 @@ public class ConfLoader implements Servlet {
         }
     }
 
+    // Returns the index of the blank line separating a part's headers from its body. Tries the
+    // standard CRLFCRLF first, then a lenient LF LF for clients that don't send carriage returns.
     private int findDoubleNewline(byte[] arr) {
         for (int i = 0; i < arr.length - 3; i++) {
             if (arr[i] == '\r' && arr[i + 1] == '\n' && arr[i + 2] == '\r' && arr[i + 3] == '\n') {
@@ -250,12 +257,15 @@ public class ConfLoader implements Servlet {
         return -1;
     }
 
+    // Splits the raw body into parts on each occurrence of the boundary marker. Done at the
+    // byte level (rather than via String.split) to stay binary-safe and avoid charset issues.
     private List<byte[]> splitBytes(byte[] data, byte[] boundary) {
         List<byte[]> parts = new ArrayList<>();
         int searchLen = data.length - boundary.length + 1;
         int lastIndex = 0;
 
         for (int i = 0; i < searchLen; i++) {
+            // Check for a boundary match starting at position i.
             boolean match = true;
             for (int j = 0; j < boundary.length; j++) {
                 if (data[i + j] != boundary[j]) {
@@ -265,6 +275,7 @@ public class ConfLoader implements Servlet {
             }
             if (match) {
                 if (i > lastIndex) {
+                    // Trim leading CR/LF/'-' framing characters so only real content remains.
                     int start = lastIndex;
                     while (start < i && (data[start] == '\r' || data[start] == '\n' || data[start] == '-')) {
                         start++;

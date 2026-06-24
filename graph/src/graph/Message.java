@@ -41,6 +41,9 @@ public class Message {
     public Message(byte[] data) {
         this.data = data;
         this.asText = new String(data);
+        // Eagerly compute all three views of the same value so consumers (numeric agents vs.
+        // text views) can read whichever they need without re-parsing. Non-numeric payloads
+        // (e.g. a topic name) fall back to NaN, which the math agents test for before acting.
         double tempDouble;
         try {
             tempDouble = Double.parseDouble(this.asText);
@@ -60,6 +63,7 @@ public class Message {
     public Message(String text) {
         this.data = text.getBytes();
         this.asText = text;
+        // Same dual text/numeric view as the byte[] constructor; NaN marks "not a number".
         double tempDouble;
         try {
             tempDouble = Double.parseDouble(text);
@@ -77,6 +81,8 @@ public class Message {
      */
     // constructor for double
     public Message(double value) {
+        // Numeric source: the double is authoritative and the text/byte views are derived
+        // from it, so no parsing (and no NaN fallback) is needed here.
         this.asDouble = value;
         this.asText = Double.toString(value);
         this.data = this.asText.getBytes();
