@@ -2,10 +2,10 @@ Project_Root/
 ├── config_files/
 │   └── simple.conf
 ├── html_files/
-│   ├── form.html                        todo
-│   ├── graph.html                       todo
-│   ├── index.html                       todo
-│   └── temp.html                        todo
+│   ├── form.html                        
+│   ├── graph.html                       
+│   ├── index.html                       
+│   └── temp.html                        
 ├── project_biu/
 │   ├── configs/
 │   │   ├── BinOpAgent.java

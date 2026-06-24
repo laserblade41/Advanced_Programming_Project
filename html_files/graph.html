@@ -130,36 +130,7 @@
     <div id="network-container"></div>
 
     <script type="text/javascript">
-        // Dummy data representing the computational graph of (A+B)*(A-B)
-        // In the final version, this data will be dynamically templated/injected by the Java backend ConfLoader servlet.
-        const nodesData = [
-            // Topics (Rectangular / Slate background / Blue outline)
-            { id: 'A', label: 'A\n[ 5.0 ]', type: 'topic' },
-            { id: 'B', label: 'B\n[ 3.0 ]', type: 'topic' },
-            { id: 'C', label: 'C\n[ 8.0 ]', type: 'topic' },
-            { id: 'D', label: 'D\n[ 2.0 ]', type: 'topic' },
-            { id: 'E', label: 'E\n[ 16.0 ]', type: 'topic' },
-
-            // Agents (Circular / Emerald background / Green outline)
-            { id: 'plus_agent', label: 'plus agent', type: 'agent' },
-            { id: 'min_agent', label: 'min agent', type: 'agent' },
-            { id: 'mul_agent', label: 'mul agent', type: 'agent' }
-        ];
-
-        const edgesData = [
-            // Connections (Topic -> Agent or Agent -> Topic)
-            { from: 'A', to: 'plus_agent' },
-            { from: 'B', to: 'plus_agent' },
-            { from: 'plus_agent', to: 'C' },
-
-            { from: 'A', to: 'min_agent' },
-            { from: 'B', to: 'min_agent' },
-            { from: 'min_agent', to: 'D' },
-
-            { from: 'C', to: 'mul_agent' },
-            { from: 'D', to: 'mul_agent' },
-            { from: 'mul_agent', to: 'E' }
-        ];
+        /* INJECT_GRAPH_DATA_HERE */
 
         // Format nodes for Vis.js based on type (Topic vs Agent)
         const formattedNodes = nodesData.map(node => {
