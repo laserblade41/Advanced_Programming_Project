@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Computational Graph Visualization</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Vis.js Network CDN -->
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --text-color: #f8fafc;
+            --border-color: rgba(255, 255, 255, 0.05);
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            color: var(--text-color);
+        }
+
+        /* Container for graph */
+        #network-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* Float UI overlay for styling / details */
+        .ui-overlay {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            z-index: 10;
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            pointer-events: none;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .ui-overlay h3 {
+            margin: 0 0 0.25rem 0;
+            font-size: 0.9rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            color: #ffffff;
+        }
+
+        .ui-overlay p {
+            margin: 0;
+            font-size: 0.75rem;
+            color: #94a3b8;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            z-index: 10;
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            display: flex;
+            gap: 1.25rem;
+            font-size: 0.75rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 500;
+            color: #cbd5e1;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        .color-topic {
+            background-color: var(--accent-blue);
+            border: 1px solid #60a5fa;
+        }
+
+        .color-agent {
+            background-color: var(--accent-green);
+            border: 1px solid #34d399;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ui-overlay">
+        <h3>Computational Graph</h3>
+        <p>Drag nodes to rearrange. Scroll to zoom, drag background to pan.</p>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item">
+            <span class="legend-color color-topic"></span>
+            <span>Topic (Data Node)</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color color-agent"></span>
+            <span>Agent (Process Node)</span>
+        </div>
+    </div>
+
+    <div id="network-container"></div>
+
+    <script type="text/javascript">
+        // Dummy data representing the computational graph of (A+B)*(A-B)
+        // In the final version, this data will be dynamically templated/injected by the Java backend ConfLoader servlet.
+        const nodesData = [
+            // Topics (Rectangular / Slate background / Blue outline)
+            { id: 'A', label: 'A\n[ 5.0 ]', type: 'topic' },
+            { id: 'B', label: 'B\n[ 3.0 ]', type: 'topic' },
+            { id: 'C', label: 'C\n[ 8.0 ]', type: 'topic' },
+            { id: 'D', label: 'D\n[ 2.0 ]', type: 'topic' },
+            { id: 'E', label: 'E\n[ 16.0 ]', type: 'topic' },
+
+            // Agents (Circular / Emerald background / Green outline)
+            { id: 'plus_agent', label: 'plus agent', type: 'agent' },
+            { id: 'min_agent', label: 'min agent', type: 'agent' },
+            { id: 'mul_agent', label: 'mul agent', type: 'agent' }
+        ];
+
+        const edgesData = [
+            // Connections (Topic -> Agent or Agent -> Topic)
+            { from: 'A', to: 'plus_agent' },
+            { from: 'B', to: 'plus_agent' },
+            { from: 'plus_agent', to: 'C' },
+
+            { from: 'A', to: 'min_agent' },
+            { from: 'B', to: 'min_agent' },
+            { from: 'min_agent', to: 'D' },
+
+            { from: 'C', to: 'mul_agent' },
+            { from: 'D', to: 'mul_agent' },
+            { from: 'mul_agent', to: 'E' }
+        ];
+
+        // Format nodes for Vis.js based on type (Topic vs Agent)
+        const formattedNodes = nodesData.map(node => {
+            const isTopic = node.type === 'topic';
+            return {
+                id: node.id,
+                label: node.label,
+                shape: isTopic ? 'box' : 'circle',
+                margin: isTopic ? 12 : 15,
+                color: {
+                    background: isTopic ? '#1e293b' : '#064e3b',
+                    border: isTopic ? '#3b82f6' : '#10b981',
+                    highlight: {
+                        background: isTopic ? '#1e293b' : '#064e3b',
+                        border: isTopic ? '#60a5fa' : '#34d399'
+                    },
+                    hover: {
+                        background: isTopic ? '#1e293b' : '#064e3b',
+                        border: isTopic ? '#60a5fa' : '#34d399'
+                    }
+                },
+                font: {
+                    color: '#f8fafc',
+                    size: 13,
+                    face: 'Inter',
+                    bold: {
+                        color: '#ffffff',
+                        size: 13,
+                        face: 'Inter'
+                    }
+                },
+                borderWidth: 2,
+                shadow: {
+                    enabled: true,
+                    color: 'rgba(0,0,0,0.4)',
+                    size: 8,
+                    x: 0,
+                    y: 4
+                }
+            };
+        });
+
+        // Format edges for Vis.js
+        const formattedEdges = edgesData.map(edge => {
+            return {
+                from: edge.from,
+                to: edge.to,
+                arrows: {
+                    to: {
+                        enabled: true,
+                        scaleFactor: 0.8
+                    }
+                },
+                color: {
+                    color: '#475569',
+                    highlight: '#60a5fa',
+                    hover: '#64748b'
+                },
+                width: 2,
+                hoverWidth: 1,
+                smooth: {
+                    type: 'cubicBezier',
+                    forceDirection: 'horizontal',
+                    roundness: 0.4
+                }
+            };
+        });
+
+        // Initialize Vis.js Network
+        const container = document.getElementById('network-container');
+        const data = {
+            nodes: new vis.DataSet(formattedNodes),
+            edges: new vis.DataSet(formattedEdges)
+        };
+
+        const options = {
+            interaction: {
+                hover: true,
+                dragNodes: true,
+                dragView: true,
+                zoomView: true
+            },
+            physics: {
+                enabled: true,
+                solver: 'barnesHut',
+                barnesHut: {
+                    gravitationalConstant: -2000,
+                    centralGravity: 0.1,
+                    springLength: 120,
+                    springConstant: 0.04,
+                    damping: 0.09,
+                    avoidOverlap: 0.5
+                },
+                stabilization: {
+                    enabled: true,
+                    iterations: 1000,
+                    updateInterval: 50,
+                    onlyDynamicEdges: false,
+                    fit: true
+                }
+            }
+        };
+
+        const network = new vis.Network(container, data, options);
+    </script>
+</body>
+</html>

@@ -1,5 +1,7 @@
 package server;
 
+import servlets.Servlet;
+
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -9,7 +11,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import servlets.Servlet;
 
 
 public class MyHTTPServer extends Thread implements HTTPServer {
@@ -188,12 +189,12 @@ public class MyHTTPServer extends Thread implements HTTPServer {
         }
 
         private Map<String, Servlet> getTargetMap(String command) {
-            switch (command.toUpperCase()) {
-                case "GET": return getServlets;
-                case "POST": return postServlets;
-                case "DELETE": return deleteServlets;
-                default: return null;
-            }
+            return switch (command.toUpperCase()) {
+                case "GET" -> getServlets;
+                case "POST" -> postServlets;
+                case "DELETE" -> deleteServlets;
+                default -> null;
+            };
         }
 
         // Implementation of the longest prefix match algorithm

@@ -1,5 +1,4 @@
 package server;
-
 import servlets.Servlet;
 
 public interface HTTPServer extends Runnable{
