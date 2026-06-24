@@ -88,15 +88,14 @@ public class HtmlGraphWriter {
                              "const edgesData = " + edgesJs.toString() + ";";
         result = result.replace("/* INJECT_GRAPH_DATA_HERE */", graphDataJs);
 
-        // Append parent's right-frame reload script if a new configuration is uploaded
-        if (isConfigUpload) {
-            int lastIndex = result.lastIndexOf("</script>");
-            if (lastIndex >= 0) {
-                String reloadScript = "\n        if (window.parent && window.parent.frames['values-right']) {\n" +
-                               "            window.parent.frames['values-right'].location.href = 'http://localhost:8080/publish';\n" +
-                               "        }\n";
-                result = result.substring(0, lastIndex) + reloadScript + result.substring(lastIndex);
-            }
+        // Always append parent's right-frame reload script to ensure any background/asynchronous 
+        // agent calculations (e.g. PlusAgent) are correctly reflected in the topic values table.
+        int lastIndex = result.lastIndexOf("</script>");
+        if (lastIndex >= 0) {
+            String reloadScript = "\n        if (window.parent && window.parent.frames['values-right']) {\n" +
+                           "            window.parent.frames['values-right'].location.href = 'http://localhost:8080/publish';\n" +
+                           "        }\n";
+            result = result.substring(0, lastIndex) + reloadScript + result.substring(lastIndex);
         }
 
         // Split by lines and return
