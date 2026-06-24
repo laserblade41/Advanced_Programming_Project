@@ -47,6 +47,7 @@ public class GenericConfig implements Config {
         }
 
         List<String> lines = readConfigLines();
+        System.out.println("[GenericConfig] Configuration lines read from file: " + lines);
 
         if (lines.size() % 3 != 0) {
             throw new IllegalStateException("invalid config file format");
@@ -59,8 +60,10 @@ public class GenericConfig implements Config {
             String[] subs = parseSubs(lines.get(i + 1));
             String[] pubs = parseSubs(lines.get(i + 2));
 
+            System.out.println("[GenericConfig] Processing agent " + className + " with subs: " + java.util.Arrays.toString(subs) + ", pubs: " + java.util.Arrays.toString(pubs));
             try {
                 Agent agent = createAgent(className, subs, pubs);
+                System.out.println("[GenericConfig] Successfully instantiated agent: " + agent.getClass().getName());
 
                 ParallelAgent wrapper = new ParallelAgent(agent, 10);
                 for (String sub : subs) {
@@ -223,13 +226,27 @@ public class GenericConfig implements Config {
     private static String[] resolveClassCandidates(String className) {
         List<String> candidates = new ArrayList<String>();
         candidates.add(className);
-        if (className.startsWith("project_biu.configs.")) {
-            candidates.add("test." + className.substring("project_biu.configs.".length()));
+
+        // Extract the simple name of the class (e.g. PlusAgent)
+        String simpleName = className;
+        int lastDot = className.lastIndexOf('.');
+        if (lastDot >= 0) {
+            simpleName = className.substring(lastDot + 1);
         }
-        if (className.indexOf('.') < 0) {
-            candidates.add("test." + className);
+
+        // Add package candidates
+        candidates.add("configs." + simpleName);
+        candidates.add("test." + simpleName);
+        candidates.add("project_biu.configs." + simpleName);
+
+        // Return unique candidates to search
+        List<String> unique = new ArrayList<>();
+        for (String c : candidates) {
+            if (!unique.contains(c)) {
+                unique.add(c);
+            }
         }
-        return candidates.toArray(new String[candidates.size()]);
+        return unique.toArray(new String[0]);
     }
 
     private static String[] parseSubs(String subsLine) {

@@ -75,13 +75,20 @@ public class ConfLoader implements Servlet {
             }
 
             // Load the GenericConfig
+            System.out.println("[ConfLoader] Saved config file to: " + file.getAbsolutePath());
             GenericConfig config = new GenericConfig();
             config.setConfFile(file.getPath());
             config.create();
 
+            System.out.println("[ConfLoader] Topics in TopicManager after config.create(): " + graph.TopicManagerSingleton.get().getAllTopics().keySet());
+
             // Create a Graph from the active topics
             Graph g = new Graph();
             g.createFromTopics();
+            System.out.println("[ConfLoader] Graph nodes created: " + g.size());
+            for (configs.Node n : g) {
+                System.out.println("  Node: " + n.getName() + " connects to: " + n.getEdges());
+            }
 
             // Obtain the HTML representation by delegating to views.HtmlGraphWriter
             List<String> htmlLines = HtmlGraphWriter.getGraphHTML(g);
