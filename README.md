@@ -105,15 +105,47 @@ The application is structured strictly according to the **Model-View-Controller 
 - A modern web browser.
 
 ### 1. Building the Project
-You can build the project inside your IDE (e.g., IntelliJ IDEA):
-1. Import the project root directory.
-2. Ensure JDK 17 is configured under Project Settings.
-3. Choose **Build** -> **Rebuild Project** to compile all modules.
+
+#### Option A: Using an IDE (e.g., IntelliJ IDEA)
+1. Import the project root directory as a new project.
+2. Open **File** -> **Project Structure** -> **Project** and set the SDK to **JDK 17** (or higher).
+3. The IDE will automatically detect the modules and configure the classpaths.
+4. Select **Build** -> **Rebuild Project** to compile all modules.
+
+#### Option B: Using the CLI (Command Line Interface)
+Open a terminal in the project root directory and run the compilation commands.
+
+- **On Windows (PowerShell)**:
+  ```powershell
+  # Create the output directory
+  mkdir -Force out/production/Advanced_Programming_Project
+  
+  # Find and compile all Java source files
+  Get-ChildItem -Recurse -Filter *.java | Select-Object -ExpandProperty FullName | Out-File -FilePath java_sources.txt -Encoding utf8
+  javac -d out/production/Advanced_Programming_Project -sourcepath ".;configs/src;graph/src;server/src;servlets/src;views/src" @java_sources.txt
+  Remove-Item java_sources.txt
+  ```
+
+- **On Linux / macOS (Bash)**:
+  ```bash
+  # Create the output directory
+  mkdir -p out/production/Advanced_Programming_Project
+  
+  # Find and compile all Java source files
+  find . -name "*.java" > java_sources.txt
+  javac -d out/production/Advanced_Programming_Project -sourcepath ".:configs/src:graph/src:server/src:servlets/src:views/src" @java_sources.txt
+  rm java_sources.txt
+  ```
 
 ### 2. Running the Server
-Run the `Main` class. The server will boot and begin listening for connections:
-```text
-[HTTP Server started on port 8080]
+
+#### Option A: Using an IDE
+- Right-click [Main.java](file:///c:/Users/USER/Documents/uni/year5/advanced%20programming/Advanced_Programming_Project/Main.java) and select **Run 'Main.main()'**.
+
+#### Option B: Using the CLI
+Run the following command from the project root directory:
+```bash
+java -cp "out/production/Advanced_Programming_Project" Main
 ```
 
 ### 3. Accessing the Dashboard
