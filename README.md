@@ -74,25 +74,25 @@ The application is structured strictly according to the **Model-View-Controller 
 ### 1. The Controller Layer (`server`, `servlets`)
 
 - `**MyHTTPServer`**: A concurrent HTTP server utilizing an `ExecutorService` thread pool to dispatch client handlers asynchronously.
-- `**RequestParser**`: Processes HTTP request headers, extracts URL parameters, parses multipart form data (for `.conf` file uploads), and segments URIs.
+- `**RequestParser`**: Processes HTTP request headers, extracts URL parameters, parses multipart form data (for `.conf` file uploads), and segments URIs.
 - **Servlets**:
   - `**HtmlLoader`**: Resolves static HTML file requests under `/app/`.
-  - `**ConfLoader**`: Stores uploaded configurations, instantiates reflection-based agents via `GenericConfig`, builds the graph, and outputs visualization HTML.
-  - `**TopicDisplayer**`: Publishes user messages, outputs the dynamic HTML table of current topic values, and orchestrates live dashboard reloading.
+  - `**ConfLoader`**: Stores uploaded configurations, instantiates reflection-based agents via `GenericConfig`, builds the graph, and outputs visualization HTML.
+  - `**TopicDisplayer`**: Publishes user messages, outputs the dynamic HTML table of current topic values, and orchestrates live dashboard reloading.
 
 ### 2. The Model Layer (`graph`, `configs`)
 
 - **Pub-Sub Graph Engine**:
   - `**Topic`**: Tracks registered `Agent` subscribers and publishes values.
-  - `**TopicManagerSingleton**`: A thread-safe catalog storing all active channels.
-  - `**ParallelAgent**`: Wraps any standard `Agent` implementation with an internal thread-safe `BlockingQueue` and a dedicated worker thread, allowing asynchronous execution of callback calculations without blocking HTTP requests.
+  - `**TopicManagerSingleton`**: A thread-safe catalog storing all active channels.
+  - `**ParallelAgent`**: Wraps any standard `Agent` implementation with an internal thread-safe `BlockingQueue` and a dedicated worker thread, allowing asynchronous execution of callback calculations without blocking HTTP requests.
 - **Configuration & Graph Building**:
   - `**GenericConfig`**: Uses dynamic ClassLoader loading and Java reflection to construct agents on-the-fly from file schemas.
-  - `**Graph**`: Generates a bipartite representation showing data flow paths (`Topic` -> `Agent` -> `Topic`) and performs DFS cycle detection.
+  - `**Graph`**: Generates a bipartite representation showing data flow paths (`Topic` -> `Agent` -> `Topic`) and performs DFS cycle detection.
 
 ### 3. The View Layer (`views`, `html_files`)
 
-- `**HtmlGraphWriter**`: Dynamically binds the current graph configuration and active topic values into the Vis.js network visualizer template.
+- `**HtmlGraphWriter`**: Dynamically binds the current graph configuration and active topic values into the Vis.js network visualizer template.
 - **Dashboard UI**:
   - HTML frames are configured to form a responsive panel dashboard.
   - Custom dark-theme styling, glassmorphism overlays, animated gradients, and interactive hover feedback are applied to deliver a modern visual experience.
@@ -161,7 +161,7 @@ Open a terminal in the project root directory and run the compilation commands.
 Run the following command from the project root directory:
 
 ```bash
-java -cp "out/production/Advanced_Programming_Project" Main
+./run.bat
 ```
 
 ### 3. Accessing the Dashboard
@@ -185,19 +185,21 @@ http://localhost:8080/app/index.html
 
 ## API Documentation (Javadoc)
 
-The project includes generated HTML API reference documentation under [`doc/api/`](doc/api/). It documents **22 public types** across five packages.
+The project includes generated HTML API reference documentation under `[doc/api/](doc/api/)`. It documents **22 public types** across five packages.
 
 ### Viewing the docs
 
-Open [`doc/api/index.html`](doc/api/index.html) in a web browser (file URL or IDE preview). No HTTP server is required; all assets are self-contained under `doc/api/`.
+Open `[doc/api/index.html](doc/api/index.html)` in a web browser (file URL or IDE preview). No HTTP server is required; all assets are self-contained under `doc/api/`.
 
-| Package | Description |
-|---------|-------------|
-| `configs` | Configuration loaders, graph model, and built-in agents (`PlusAgent`, `IncAgent`, `BinOpAgent`, etc.) |
-| `graph` | Pub-sub engine: topics, messages, agents, and asynchronous `ParallelAgent` wrapper |
-| `server` | Embeddable HTTP server (`HTTPServer`, `MyHTTPServer`) and `RequestParser` |
-| `servlets` | Request handler interface and dashboard servlets (`ConfLoader`, `HtmlLoader`, `TopicDisplayer`) |
-| `views` | HTML graph visualization builder (`HtmlGraphWriter`) |
+
+| Package    | Description                                                                                           |
+| ---------- | ----------------------------------------------------------------------------------------------------- |
+| `configs`  | Configuration loaders, graph model, and built-in agents (`PlusAgent`, `IncAgent`, `BinOpAgent`, etc.) |
+| `graph`    | Pub-sub engine: topics, messages, agents, and asynchronous `ParallelAgent` wrapper                    |
+| `server`   | Embeddable HTTP server (`HTTPServer`, `MyHTTPServer`) and `RequestParser`                             |
+| `servlets` | Request handler interface and dashboard servlets (`ConfLoader`, `HtmlLoader`, `TopicDisplayer`)       |
+| `views`    | HTML graph visualization builder (`HtmlGraphWriter`)                                                  |
+
 
 ### Regenerating the docs
 
@@ -235,8 +237,8 @@ If `javadoc` is not on your PATH (common on Windows), use the full JDK path, for
 ## Submission Deliverables
 
 - `**link.txt`**: Contains the Git URL and registration information for the project.
-- `**demo_video.mp4**`: A video demonstration showing:
+- `**demo_video.mp4`**: A video demonstration showing:
   - System architecture slides
   - Live demo of file deployment and dynamic calculations
-- **`doc/api/`**: Pre-generated Javadoc HTML for the full public API (`configs`, `graph`, `server`, `servlets`, `views`). Entry point: [`doc/api/index.html`](doc/api/index.html). Regenerate using the commands in the **API Documentation (Javadoc)** section above.
+- `**doc/api/`**: Pre-generated Javadoc HTML for the full public API (`configs`, `graph`, `server`, `servlets`, `views`). Entry point: `[doc/api/index.html](doc/api/index.html)`. Regenerate using the commands in the **API Documentation (Javadoc)** section above.
 
