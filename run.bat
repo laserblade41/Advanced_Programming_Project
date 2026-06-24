@@ -17,7 +17,7 @@ dir /s /B *.java > sources.txt
 move /y sources.tmp sources.txt >nul
 
 echo Compiling Java sources...
-javac -d bin @sources.txt
+javac -encoding UTF-8 -d bin @sources.txt
 if errorlevel 1 (
     echo.
     echo Compilation failed. See errors above.
